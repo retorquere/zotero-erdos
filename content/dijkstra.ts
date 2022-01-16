@@ -24,79 +24,90 @@
  *****************************************************************************/
 
 // vertex points to neighbour points to cost
-type DiGraph = Record<string, Record<string, number>>
+export type DiGraph = Record<string, Record<string, number>>
 
-export function single_source_shortest_paths(graph: DiGraph, src: string, dst: string) {
+export class Dijsktra {
   // Predecessor map for each vertex that has been encountered.
   // vertex ID => predecessor vertex ID
-  const predecessors: Record<string, string[]> = {};
-
+  private predecessors: Record<string, string[]> = {}
   // Costs of shortest paths from s to all vertices encountered.
   // vertex ID => cost
-  const costs = {};
-  costs[src] = 0;
+  private costs: Record<string, number> = {}
 
-  // Costs of shortest paths from s to all vertices encountered; differs from
-  // `costs` in that it provides easy access to the vertex that currently has
-  // the known shortest path from s.
-  // XXX: Do we actually need both `costs` and `open`?
-  const open = new PriorityQueue
-  open.push(src, 0);
+  constructor(graph: DiGraph, src: string) {
+    this.costs[src] = 0
 
-  while (!open.empty()) {
-    // In the vertices remaining in graph that have a known cost from s,
-    // find the vertex, u, that currently has the shortest path from s.
-    const { vertex: u, cost: cost_of_s_to_u } = open.pop();
+    // Costs of shortest paths from s to all vertices encountered; differs from
+    // `costs` in that it provides easy access to the vertex that currently has
+    // the known shortest path from s.
+    // XXX: Do we actually need both `costs` and `open`?
+    const open = new PriorityQueue
+    open.push(src, 0)
 
-    // Get vertices adjacent to u and explore the edges that connect u to those vertices, updating
-    // the cost of the shortest paths to any or all of those vertices as
-    // necessary. v is the vertice across the current edge from u.
-    for (const [v, cost_of_e] of Object.entries(graph[u] || {})) {
-      // Cost of s to u plus the cost of u to v across e--this is *a*
-      // cost from s to v that may or may not be less than the current
-      // known cost to v.
-      const cost_of_s_to_u_plus_cost_of_e = cost_of_s_to_u + cost_of_e;
+    while (!open.empty()) {
+      // In the vertices remaining in graph that have a known cost from s,
+      // find the vertex, u, that currently has the shortest path from s.
+      const { vertex: u, cost: cost_of_s_to_u } = open.pop()
 
-      // If we haven't visited v yet OR if the current known cost from s to
-      // v is greater than the new cost we just found (cost of s to u plus
-      // cost of u to v across e), update v's cost in the cost list and
-      // update v's predecessor in the predecessor list (it's now u).
-      const cost_of_s_to_v = costs[v];
-      const first_visit = (typeof costs[v] === 'undefined');
-      if (first_visit || cost_of_s_to_v > cost_of_s_to_u_plus_cost_of_e) {
-        costs[v] = cost_of_s_to_u_plus_cost_of_e;
-        open.push(v, cost_of_s_to_u_plus_cost_of_e);
-        predecessors[v] = [u];
-      }
-      else if (cost_of_s_to_v === cost_of_s_to_u_plus_cost_of_e) {
-        predecessors[v].push(u)
+      // Get vertices adjacent to u and explore the edges that connect u to those vertices, updating
+      // the cost of the shortest paths to any or all of those vertices as
+      // necessary. v is the vertice across the current edge from u.
+      for (const [v, cost_of_e] of Object.entries(graph[u] || {})) {
+        // Cost of s to u plus the cost of u to v across e--this is *a*
+        // cost from s to v that may or may not be less than the current
+        // known cost to v.
+        const cost_of_s_to_u_plus_cost_of_e = cost_of_s_to_u + cost_of_e
+
+        // If we haven't visited v yet OR if the current known cost from s to
+        // v is greater than the new cost we just found (cost of s to u plus
+        // cost of u to v across e), update v's cost in the cost list and
+        // update v's predecessor in the predecessor list (it's now u).
+        const cost_of_s_to_v = this.costs[v]
+        const first_visit = (typeof this.costs[v] === 'undefined')
+        if (first_visit || cost_of_s_to_v > cost_of_s_to_u_plus_cost_of_e) {
+          this.costs[v] = cost_of_s_to_u_plus_cost_of_e
+          open.push(v, cost_of_s_to_u_plus_cost_of_e)
+          this.predecessors[v] = [u]
+        }
+        else if (cost_of_s_to_v === cost_of_s_to_u_plus_cost_of_e) {
+          this.predecessors[v].push(u)
+        }
       }
     }
   }
 
-  if (typeof dst !== 'undefined' && typeof costs[dst] === 'undefined') {
-    throw new Error(`Could not find a path from ${src} to ${dst}.`)
+  public reachable(dst: string): boolean {
+    return typeof this.costs[dst] === 'number'
   }
 
-  return predecessors
-}
+  private extract_paths(paths: string[][], path: number) {
+    const head = paths[path][0]
+    const head_pred = this.predecessors[head]
+    if (!head_pred || head_pred.length === 0) return
 
-export function extract_shortest_path_from_predecessor_list(predecessors, dst) {
-  const vertices = [];
-  let u = dst;
-  let predecessor;
-  while (u) {
-    u = typeof u === 'string' ? u : u[0]
-    vertices.push(u)
-    u = predecessors[u];
+    const history = head_pred.length > 1 ? paths[path].slice() : []
+
+    let add = false
+    for (const pred of head_pred) {
+      if (add) {
+        path = paths.length
+        paths.push(history.slice())
+      }
+      paths[path].unshift(pred)
+      this.extract_paths(paths, path)
+      add = true
+    }
   }
-  vertices.reverse();
-  return vertices;
-}
 
-export function find_path(graph: DiGraph, src: string, dst: string) {
-  const predecessors = single_source_shortest_paths(graph, src, dst);
-  return extract_shortest_path_from_predecessor_list(predecessors, dst);
+  public paths(dst: string): string[][] {
+    if (!this.reachable(dst)) throw new Error(`${JSON.stringify(dst)} is not reachable`)
+    const paths: string[][] = [[dst]]
+    this.extract_paths(paths, 0)
+    for (const path of paths) {
+      path.reverse()
+    }
+    return paths
+  }
 }
 
 /**
@@ -108,11 +119,11 @@ class PriorityQueue {
 
   constructor() {
     this.queue = new MinHeap(this.default_sorter.bind(this))
-    this.priorities = {};
+    this.priorities = {}
   }
 
   default_sorter(a, b) {
-    return this.priorities[a] - this.priorities[b];
+    return this.priorities[a] - this.priorities[b]
   }
 
   /**
@@ -120,17 +131,17 @@ class PriorityQueue {
    * is at the front of the queue.
    */
   push(vertex, cost) {
-    this.priorities[vertex] = cost;
-    this.queue.insert(vertex);
+    this.priorities[vertex] = cost
+    this.queue.insert(vertex)
   }
 
   /**
    * Return the highest priority element in the queue.
    */
   pop() {
-    const vertex = this.queue.pop();
-    const cost = this.priorities[vertex];
-    delete this.priorities[vertex];
+    const vertex = this.queue.pop()
+    const cost = this.priorities[vertex]
+    delete this.priorities[vertex]
 
     return { vertex, cost }
   }
@@ -147,8 +158,8 @@ class MinHeap {
   private container: string[]
 
   constructor(sorter: (a: string, b: string) => number) {
-    this.sorter = sorter;
-    this.container = [];
+    this.sorter = sorter
+    this.container = []
   }
 
   sorter(a: string, b: string): number {
@@ -159,31 +170,31 @@ class MinHeap {
    * Finding parents or children with indexes.
    */
   get_left_child_index(parent_index: number): number {
-    return (2 * parent_index) + 1;
+    return (2 * parent_index) + 1
   }
   get_right_child_index(parent_index: number): number {
-    return (2 * parent_index) + 2;
+    return (2 * parent_index) + 2
   }
   get_parent_index(child_index: number): number {
-    return Math.floor((child_index - 1) / 2);
+    return Math.floor((child_index - 1) / 2)
   }
   has_parent(child_index: number): boolean {
-    return this.get_parent_index(child_index) >= 0;
+    return this.get_parent_index(child_index) >= 0
   }
   has_left_child(parent_index: number): boolean {
-    return this.get_left_child_index(parent_index) < this.container.length;
+    return this.get_left_child_index(parent_index) < this.container.length
   }
   has_right_child(parent_index: number): boolean {
-    return this.get_right_child_index(parent_index) < this.container.length;
+    return this.get_right_child_index(parent_index) < this.container.length
   }
   left_child(parent_index: number): string {
-    return this.container[this.get_left_child_index(parent_index)];
+    return this.container[this.get_left_child_index(parent_index)]
   }
   right_child(parent_index: number): string {
-    return this.container[this.get_right_child_index(parent_index)];
+    return this.container[this.get_right_child_index(parent_index)]
   }
   parent(child_index: number): string {
-    return this.container[this.get_parent_index(child_index)];
+    return this.container[this.get_parent_index(child_index)]
   }
   swap(first: number, second: number): void {
     [ this.container[first], this.container[second] ] = [ this.container[second], this.container[first] ]
@@ -193,61 +204,62 @@ class MinHeap {
    * Returns element with the highest priority. 
    */
   pop() {
-    if (this.container.length === 1) return this.container.pop();
+    if (this.container.length === 1) return this.container.pop()
 
-    const head_index = 0;
-    const last_element = this.container.pop();
-    const first_element = this.container[head_index];
+    const head_index = 0
+    const last_element = this.container.pop()
+    const first_element = this.container[head_index]
 
-    this.container[head_index] = last_element;
-    this.heapify_down(head_index);
+    this.container[head_index] = last_element
+    this.heapify_down(head_index)
 
-    return first_element;
+    return first_element
   }
 
   insert(vertex: string) {
-    this.container.push(vertex);
-    this.heapify_up(this.container.length - 1);
+    this.container.push(vertex)
+    this.heapify_up(this.container.length - 1)
   }
 
   heapify_up(start_index) {
-    let current_index = start_index || this.container.length - 1;
+    let current_index = start_index || this.container.length - 1
 
     while (this.has_parent(current_index) && !this.pair_is_in_correct_order(this.parent(current_index), this.container[current_index])) {
-      this.swap(current_index, this.get_parent_index(current_index));
-      current_index = this.get_parent_index(current_index);
+      this.swap(current_index, this.get_parent_index(current_index))
+      current_index = this.get_parent_index(current_index)
     }
   }
   
   heapify_down(start_index = 0) {
-    let current_index = start_index;
-    let next_index = null;
+    let current_index = start_index
+    let next_index = null
 
     while (this.has_left_child(current_index)) {
       if (this.has_parent(current_index) && this.pair_is_in_correct_order(this.right_child(current_index), this.left_child(current_index))) {
-        next_index = this.get_right_child_index(current_index);
+        next_index = this.get_right_child_index(current_index)
       } else {
-        next_index = this.get_left_child_index(current_index);
+        next_index = this.get_left_child_index(current_index)
       }
 
       if (this.pair_is_in_correct_order(this.container[current_index], this.container[next_index])) {
-        break;
+        break
       }
 
-      this.swap(current_index, next_index);
-      current_index = next_index;
+      this.swap(current_index, next_index)
+      current_index = next_index
     }
   }
 
   empty() {
-    return this.container.length === 0;
+    return this.container.length === 0
   }
 
   pair_is_in_correct_order(a, b) {
-    return this.sorter(a, b) < 0;
+    return this.sorter(a, b) < 0
   }
 }
 
+/*
 const dst = 'C3'
 const src = 'C2'
 
@@ -261,6 +273,5 @@ for (let [v, w] of edges) {
   graph[w] = graph[w] || {}
   graph[w][v] = 1
 }
-
-console.log(graph)
-console.log(find_path(graph, src, dst))
+console.log((new Dijsktra(graph, src)).paths(dst))
+*/

@@ -30,7 +30,7 @@ if (!Zotero.Erdos) {
           nodes: Zotero.File.getContentsFromURL(`resource://zotero-erdos/nodes.sql`).replace(/[\r\n]/g, ' '),
           edges: Zotero.File.getContentsFromURL(`resource://zotero-erdos/edges.sql`).replace(/[\r\n]/g, ' '),
         }
-        Zotero.Notifier.registerObserver(this, ['item'], 'Erdos, 1)
+        Zotero.Notifier.registerObserver(this, ['item'], 'Erdos', 1)
         await this.refresh()
       })
 
