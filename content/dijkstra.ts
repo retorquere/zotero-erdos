@@ -23,6 +23,8 @@
  * THE SOFTWARE.
  *****************************************************************************/
 
+import nanoq = require('nanoq')
+
 // vertex points to neighbour points to cost
 export type DiGraph = Record<string, Record<string, number>>
 
@@ -114,16 +116,16 @@ export class Dijsktra {
  * Priority queue implementation.
  */
 class PriorityQueue {
-  private queue: MinHeap
+  private queue: any
   private priorities: Record<string, number>
 
   constructor() {
-    this.queue = new MinHeap(this.default_sorter.bind(this))
+    this.queue = new nanoq(null, this.compare.bind(this))
     this.priorities = {}
   }
 
-  default_sorter(a, b) {
-    return this.priorities[a] - this.priorities[b]
+  compare(v, w) {
+    return this.priorities[v] - this.priorities[w]
   }
 
   /**
@@ -132,7 +134,7 @@ class PriorityQueue {
    */
   push(vertex, cost) {
     this.priorities[vertex] = cost
-    this.queue.insert(vertex)
+    this.queue.push(vertex)
   }
 
   /**
@@ -147,115 +149,7 @@ class PriorityQueue {
   }
 
   empty() {
-    return this.queue.empty()
-  }
-}
-
-/**
- * Min heap implementation.
- */
-class MinHeap {
-  private container: string[]
-
-  constructor(sorter: (a: string, b: string) => number) {
-    this.sorter = sorter
-    this.container = []
-  }
-
-  sorter(a: string, b: string): number {
-    return 0
-  }
-
-  /**
-   * Finding parents or children with indexes.
-   */
-  get_left_child_index(parent_index: number): number {
-    return (2 * parent_index) + 1
-  }
-  get_right_child_index(parent_index: number): number {
-    return (2 * parent_index) + 2
-  }
-  get_parent_index(child_index: number): number {
-    return Math.floor((child_index - 1) / 2)
-  }
-  has_parent(child_index: number): boolean {
-    return this.get_parent_index(child_index) >= 0
-  }
-  has_left_child(parent_index: number): boolean {
-    return this.get_left_child_index(parent_index) < this.container.length
-  }
-  has_right_child(parent_index: number): boolean {
-    return this.get_right_child_index(parent_index) < this.container.length
-  }
-  left_child(parent_index: number): string {
-    return this.container[this.get_left_child_index(parent_index)]
-  }
-  right_child(parent_index: number): string {
-    return this.container[this.get_right_child_index(parent_index)]
-  }
-  parent(child_index: number): string {
-    return this.container[this.get_parent_index(child_index)]
-  }
-  swap(first: number, second: number): void {
-    [ this.container[first], this.container[second] ] = [ this.container[second], this.container[first] ]
-  }
-
-  /**
-   * Returns element with the highest priority. 
-   */
-  pop() {
-    if (this.container.length === 1) return this.container.pop()
-
-    const head_index = 0
-    const last_element = this.container.pop()
-    const first_element = this.container[head_index]
-
-    this.container[head_index] = last_element
-    this.heapify_down(head_index)
-
-    return first_element
-  }
-
-  insert(vertex: string) {
-    this.container.push(vertex)
-    this.heapify_up(this.container.length - 1)
-  }
-
-  heapify_up(start_index) {
-    let current_index = start_index || this.container.length - 1
-
-    while (this.has_parent(current_index) && !this.pair_is_in_correct_order(this.parent(current_index), this.container[current_index])) {
-      this.swap(current_index, this.get_parent_index(current_index))
-      current_index = this.get_parent_index(current_index)
-    }
-  }
-  
-  heapify_down(start_index = 0) {
-    let current_index = start_index
-    let next_index = null
-
-    while (this.has_left_child(current_index)) {
-      if (this.has_parent(current_index) && this.pair_is_in_correct_order(this.right_child(current_index), this.left_child(current_index))) {
-        next_index = this.get_right_child_index(current_index)
-      } else {
-        next_index = this.get_left_child_index(current_index)
-      }
-
-      if (this.pair_is_in_correct_order(this.container[current_index], this.container[next_index])) {
-        break
-      }
-
-      this.swap(current_index, next_index)
-      current_index = next_index
-    }
-  }
-
-  empty() {
-    return this.container.length === 0
-  }
-
-  pair_is_in_correct_order(a, b) {
-    return this.sorter(a, b) < 0
+    return this.queue.length() === 0
   }
 }
 

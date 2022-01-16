@@ -44,6 +44,7 @@
     "releaseURL": "https://github.com/retorquere/zotero-erdos/releases/download/release/"
   },
   "dependencies": {
-    "eventemitter2": "^6.4.5"
+    "eventemitter2": "^6.4.5",
+    "nanoq": "^1.1.0"
   }
 }
