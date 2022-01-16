@@ -1,4 +1,4 @@
-/******************************************************************************
+/* ****************************************************************************
  * Created 2008-08-19.
  *
  * Dijkstra path-finding functions. Adapted from the Dijkstar Python project.
@@ -28,7 +28,7 @@ import nanoq = require('nanoq')
 // vertex points to neighbour points to cost
 export type DiGraph = Record<string, Record<string, number>>
 
-export class Dijsktra {
+export class Dijkstra {
   // Predecessor map for each vertex that has been encountered.
   // vertex ID => predecessor vertex ID
   private predecessors: Record<string, string[]> = {}
@@ -80,6 +80,10 @@ export class Dijsktra {
 
   public reachable(dst: string): boolean {
     return typeof this.costs[dst] === 'number'
+  }
+
+  public distance(dst: string): number {
+    return this.costs[dst]
   }
 
   private extract_paths(paths: string[][], path: number) {
@@ -140,8 +144,8 @@ class PriorityQueue {
   /**
    * Return the highest priority element in the queue.
    */
-  pop() {
-    const vertex = this.queue.pop()
+  pop(): { vertex: string, cost: number } {
+    const vertex = this.queue.pop() as string
     const cost = this.priorities[vertex]
     delete this.priorities[vertex]
 

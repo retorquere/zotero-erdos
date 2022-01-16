@@ -3,6 +3,10 @@ declare const Zotero: any
 
 import { debug } from './debug'
 import { EventEmitter2 as EventEmitter } from 'eventemitter2'
+import { DiGraph, Dijkstra } from './dijkstra'
+
+
+type Creator = { fieldMode: number, firstName: string, lastName: string }
 
 if (!Zotero.Erdos) {
   const monkey_patch_marker = 'ErdosMonkeyPatched'
@@ -15,23 +19,36 @@ if (!Zotero.Erdos) {
   }
 
   class Erdos { // tslint:disable-line:variable-name
+    private graph: DiGraph
+    private pathfinder: Dijkstra
     private initialized = false
     private globals: Record<string, any>
     private strings: any
-    private query: { nodes: string, edges: string }
+    private query: string
+    private start: string
+
     public event = new EventEmitter({ wildcard: true, delimiter: '.', ignoreErrors: false })
 
     private observer: MutationObserver
 
     constructor() {
-      this.event.on('start', async ({ document: doc }) => {
-        this.strings = doc.getElementById('zotero-erdos-strings')
-        this.query = {
-          nodes: Zotero.File.getContentsFromURL(`resource://zotero-erdos/nodes.sql`).replace(/[\r\n]/g, ' '),
-          edges: Zotero.File.getContentsFromURL(`resource://zotero-erdos/edges.sql`).replace(/[\r\n]/g, ' '),
+      this.event.on('start', async ({ document: doc }) => { // eslint-disable-line @typescript-eslint/no-misused-promises
+        try {
+          debug('started')
+          await Zotero.Schema.schemaUpdatePromise
+          debug('ready')
+
+          this.strings = doc.getElementById('zotero-erdos-strings')
+          debug('strings loaded')
+          this.query = Zotero.File.getContentsFromURL('resource://zotero-erdos/graph.sql').replace(/[\r\n]/g, ' ')
+          debug('query loaded')
+          Zotero.Notifier.registerObserver(this, ['item'], 'Erdos', 1)
+          debug('start refresh')
+          await this.refresh()
         }
-        Zotero.Notifier.registerObserver(this, ['item'], 'Erdos', 1)
-        await this.refresh()
+        catch (err) {
+          debug('error:', err.message)
+        }
       })
 
       this.event.on('item.view', ({ item: _item, document: doc }: { item: any, document: Document }) => {
@@ -43,28 +60,76 @@ if (!Zotero.Erdos) {
     }
 
     private async refresh() {
-      this.graph = graphlib.json.read({
-        options: { directed: true, multigraph: false, compound: false },
-        nodes: (await Zotero.DB.query(this.query.nodes)).map(row => ({ v: row.v })),
-        edges: (await Zotero.DB.query(this.query.edges)).map(row => ({ v: row.v, w: row.w })),
-      })
+      this.pathfinder = null
+      const graph: DiGraph = {}
+      for (const {v, w} of (await Zotero.DB.queryAsync(this.query))) {
+        graph[v] = graph[v] || {}
+        graph[v][w] = 1
+
+        graph[w] = graph[w] || {}
+        graph[w][v] = 1
+      }
+      debug('graph refreshed')
+      this.graph = graph
     }
 
-    private async notify(_action: any, _type: any, ids: any[], _extraData: any) {
+    private async notify(_action: any, _type: any, _ids: any[], _extraData: any) {
       await this.refresh()
     }
 
-    protected async itemboxmutated(mutations: MutationRecord[], _observer: MutationObserver): void {
+    private creator(creator: Creator): string {
+      const name = creator.fieldMode === 1 ? creator.lastName : `${creator.lastName}, ${creator.firstName}`
+      return name.trim()
+    }
+
+    private creatorID(creator: Creator): string {
+      // "fieldMode":0,"firstName":"Saharon","lastName":"Shelah"
+      const name = creator.fieldMode === 1 ? creator.lastName : `${creator.lastName}\t${creator.firstName}`
+      const id = `C\t${name}`
+      return id
+    }
+    protected setStart(creator: Creator) {
+      const id = this.creatorID(creator)
+      this.pathfinder = new Dijkstra(this.graph, id)
+      this.start = this.creator(creator)
+    }
+    protected setEnd(creator: Creator) {
+      const id = this.creatorID(creator)
+      alert(`distance=${this.pathfinder.distance(id)}`)
+    }
+
+    protected itemboxmutated(mutations: MutationRecord[], _observer: MutationObserver): void {
       let id: string
       for (const mutation of mutations) {
         const node = mutation.target as Element
         if (mutation.type === 'childList' && (id = node.getAttribute('id'))) {
           if (id === 'creator-type-menu') {
-            if (!node.querySelector('#erdos')) {
+            if (this.graph && !node.querySelector('#erdos-start')) {
               node.appendChild(node.ownerDocument.createElement('menuseparator'))
               const menuitem = node.appendChild(node.ownerDocument.createElement('menuitem'))
               menuitem.setAttribute('id', 'erdos-start')
               menuitem.setAttribute('label', 'Start of Erdos trail')
+              menuitem.setAttribute('oncommand', `
+                var typeBox = document.popupNode.localName == 'hbox' ? document.popupNode : document.popupNode.parentNode;
+                var index = parseInt(typeBox.getAttribute('fieldname').split('-')[1]);
+                var item = document.getBindingParent(this).item;
+                var exists = item.hasCreatorAt(index);
+                if (exists) Zotero.Erdos.setStart(item.getCreator(index));
+                return false;
+              `)
+            }
+            if (this.start && !node.querySelector('#erdos-end')) {
+              const menuitem = node.appendChild(node.ownerDocument.createElement('menuitem'))
+              menuitem.setAttribute('id', 'erdos-end')
+              menuitem.setAttribute('label', `Path to ${this.start}`)
+              menuitem.setAttribute('oncommand', `
+                var typeBox = document.popupNode.localName == 'hbox' ? document.popupNode : document.popupNode.parentNode;
+                var index = parseInt(typeBox.getAttribute('fieldname').split('-')[1]);
+                var item = document.getBindingParent(this).item;
+                var exists = item.hasCreatorAt(index);
+                if (exists) Zotero.Erdos.setEnd(item.getCreator(index));
+                return false;
+              `)
             }
           }
         }

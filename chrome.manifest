@@ -1,6 +1,7 @@
 content	zotero-erdos				content/
 locale	zotero-erdos	en-US		locale/en-US/
 skin	zotero-erdos	default		skin/
+resource  zotero-erdos          resource/
 
 overlay	chrome://zotero/content/zoteroPane.xul	chrome://zotero-erdos/content/zotero-erdos.xul
 overlay chrome://zotero/content/itemPane.xul    chrome://zotero-erdos/content/itemPane.xul
