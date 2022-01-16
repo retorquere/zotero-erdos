@@ -3,25 +3,22 @@
 <!DOCTYPE window SYSTEM "chrome://zotero-erdos/locale/zotero-erdos.dtd">
 
 <overlay id="zotero-erdos-overlay" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-  <script>
-    var globals = Function('return this')();
-  </script>
   <stringbundleset>
     <stringbundle id="zotero-erdos-strings" src="chrome://zotero-erdos/locale/zotero-erdos.properties"/>
   </stringbundleset>
-	
+
+  <menupopup id="zotero-itemmenu">
+    <menu id="zotero-itemmenu-erdos" label="Erdos" class="menu-iconic" image="chrome://zotero-better-bibtex/skin/bibtex-menu.svg">
+      <menupopup id="zotero-itemmenu-erdos-submenu">
+        <menuitem label="start" oncommand="alert('start');"/>
+      </menupopup>
+    </menu>
+  </menupopup>
+
 	<!-- Include the main extension logic -->
   <script src="chrome://zotero/content/include.js"/>
   <script src="chrome://zotero-erdos/content/zotero-erdos.js"/>
   <script>
-    window.addEventListener('load', async function() {
-      try {
-        Zotero.debug('zotero-erdos startup')
-        await Zotero.Erdos.load(globals)
-        Zotero.debug('zotero-erdos started')
-      } catch (err) {
-        Zotero.debug(`zotero-erdos ZoteroPane overlay error: ${err.message}\n${err.stack ||''}`)
-      }
-    })
+    Zotero.Erdos.event.emit('start', { document })
   </script>
 </overlay>
