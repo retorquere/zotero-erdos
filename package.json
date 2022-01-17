@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "eventemitter2": "^6.4.5",
-    "nanoq": "^1.1.0"
+    "nanoq": "^1.1.0",
+    "pug": "^3.0.2"
   }
 }

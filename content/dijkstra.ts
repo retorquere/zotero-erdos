@@ -30,7 +30,7 @@ export type DiGraph = Record<string, Record<string, number>>
 
 export class Dijkstra {
   // Predecessor map for each vertex that has been encountered.
-  // vertex ID => predecessor vertex ID
+  // vertex ID => predecessor vertex IDs
   private predecessors: Record<string, string[]> = {}
   // Costs of shortest paths from s to all vertices encountered.
   // vertex ID => cost
@@ -86,29 +86,41 @@ export class Dijkstra {
     return this.costs[dst]
   }
 
-  private extract_paths(paths: string[][], path: number) {
+  private shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]]
+    }
+  }
+
+  private extract_paths(paths: string[][], path: number, n?: number) {
     const head = paths[path][0]
     const head_pred = this.predecessors[head]
     if (!head_pred || head_pred.length === 0) return
+
+    // if we're limiting the number of paths, randomize so we get new paths each extract
+    if (typeof n === 'number' && head_pred.length > 1) this.shuffle(head_pred)
 
     const history = head_pred.length > 1 ? paths[path].slice() : []
 
     let add = false
     for (const pred of head_pred) {
       if (add) {
+        if (typeof n === 'number' && paths.length === n) break
         path = paths.length
         paths.push(history.slice())
       }
       paths[path].unshift(pred)
-      this.extract_paths(paths, path)
+      this.extract_paths(paths, path, n)
       add = true
     }
   }
 
-  public paths(dst: string): string[][] {
+  public paths(dst: string, n?: number): string[][] {
     if (!this.reachable(dst)) throw new Error(`${JSON.stringify(dst)} is not reachable`)
+    if (typeof n === 'number' && n < 1) throw new Error('must extract at least 1 path')
     const paths: string[][] = [[dst]]
-    this.extract_paths(paths, 0)
+    this.extract_paths(paths, 0, n)
     for (const path of paths) {
       path.reverse()
     }
