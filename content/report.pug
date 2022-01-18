@@ -1,0 +1,14 @@
+html
+  title path from #{start} to #{end}
+  body
+    h2 path from #{start} to #{end}
+    each path in paths
+      table
+        each step in path
+          tr
+            td= step.creator1
+            td co-authored with
+            td= step.creator2
+            td
+              a(href=step.select)= step.title
+

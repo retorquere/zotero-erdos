@@ -4,9 +4,10 @@ declare const Zotero: any
 import { debug } from './debug'
 import { EventEmitter2 as EventEmitter } from 'eventemitter2'
 import { DiGraph, Dijkstra } from './dijkstra'
-
+const template = require('./report.pug')
 
 type Creator = { fieldMode: number, firstName?: string, lastName: string }
+type ReportStep = { creator1: string, creator2: string, title: string, select: string }
 
 if (!Zotero.Erdos) {
   const monkey_patch_marker = 'ErdosMonkeyPatched'
@@ -26,7 +27,8 @@ if (!Zotero.Erdos) {
     private strings: any
     private query: { graph: string, items: string }
     private start: string
-    protected report: { creator1: string, creator2: string, title: string, select: string }[][]
+    private started = false
+    protected report: string
 
     public event = new EventEmitter({ wildcard: true, delimiter: '.', ignoreErrors: false })
 
@@ -49,9 +51,10 @@ if (!Zotero.Erdos) {
           Zotero.Notifier.registerObserver(this, ['item'], 'Erdos', 1)
           debug('start refresh')
           await this.refresh()
+          this.started = true
         }
         catch (err) {
-          debug('error:', err.message)
+          debug('Error:', err.message)
         }
       })
 
@@ -87,7 +90,7 @@ if (!Zotero.Erdos) {
           creator = Zotero.Creators.get(creator) as Creator
         }
         catch (err) {
-          debug('error getting', creator, err.message)
+          debug('error: getting', creator, err.message)
           creator = { fieldMode: 1, lastName: creator } as Creator
         }
       }
@@ -95,8 +98,17 @@ if (!Zotero.Erdos) {
     }
 
     protected async setStart(creator: Creator) {
+      if (!this.started) {
+        alert('still starting')
+        return
+      }
+
       try {
-        const id = await Zotero.Creators.getIDFromData(creator)
+        let id: number
+        await Zotero.DB.executeTransaction(async () => {
+          id = await Zotero.Creators.getIDFromData(creator)
+        })
+
         if (id) {
           this.pathfinder = new Dijkstra(this.graph, `C${id}`)
           this.start = this.creator(creator)
@@ -106,22 +118,30 @@ if (!Zotero.Erdos) {
         }
       }
       catch (err) {
-        debug('setStart error:', err.message)
+        debug('error: setStart', err.message)
       }
     }
 
     protected async setEnd(creator: Creator) {
+      if (!this.started) {
+        alert('still starting')
+        return
+      }
+
       try {
-        const id: string = await Zotero.Creators.getIDFromData(creator)
-        if (id) {
+        let id: number
+        await Zotero.DB.executeTransaction(async () => {
+          id = await Zotero.Creators.getIDFromData(creator)
+        })
+        if (typeof id === 'number') {
           // path = (src) - I - C - I - C ....
           const paths: string[][] = this.pathfinder.paths(`C${id}`).filter(path => path.length > 2)
           if (!paths.length) return
-          const vertices = paths.flat()
+          const vertices: string[] = [].concat(...paths)
 
           const itemIDs = vertices.filter(v => v[0] === 'I').map(i => i.substr(1)).join(',')
           const items: Record<string, { title: string, select: string }> = {}
-          for (const { itemID, title, itemKey, libraryID } of (await Zotero.DB.queryAsync(`${this.query.items} WHERE itemID IN (${itemIDs})`))) {
+          for (const { itemID, title, itemKey, libraryID } of (await Zotero.DB.queryAsync(`${this.query.items} WHERE i.itemID IN (${itemIDs})`))) {
             items[`I${itemID}`] = {
               title,
               select: libraryID === Zotero.Libraries.userLibraryID ? `zotero://select/library/items/${itemKey}` : `zotero://select/groups/${libraryID}/items/${itemKey}`,
@@ -130,28 +150,34 @@ if (!Zotero.Erdos) {
 
           const creators: Record<string, string> = vertices.filter(v => v[0] === 'C').reduce((acc, c) => { acc[c] = this.creator(c.substr(1)); return acc }, {})
 
-          this.report = []
+          const report: ReportStep[][] = []
           for (const path of paths) {
-            this.report.unshift([])
+            report.unshift([])
             for (let i = 0; i < paths.length - 2; i += 2) {
-              this.report[0].push({
+              report[0].push({
                 creator1: creators[path[i]],
                 ...items[path[i + 1]],
                 creator2: creators[path[i + 2]],
               })
             }
           }
+          this.report = template({ start: this.start, end: this.creator(creator), paths: report })
+
+          debug(this.report)
+          Zotero.openInViewer('chrome://zotero-erdos/content/report.html')
         }
         else {
           alert(`could not find ${JSON.stringify(creator)}`)
         }
       }
       catch (err) {
-        debug('setEnd error:', err.message)
+        debug('error: setEnd', err.message, '\n', err.stack)
       }
     }
 
     protected itemboxmutated(mutations: MutationRecord[], _observer: MutationObserver): void {
+      if (!this.started) return
+
       let id: string
       for (const mutation of mutations) {
         const node = mutation.target as Element
