@@ -7,7 +7,7 @@ import { DiGraph, Dijkstra } from './dijkstra'
 const template = require('./report.pug')
 
 type Creator = { fieldMode: number, firstName?: string, lastName: string }
-type ReportStep = { creator1: string, creator2: string, title: string, select: string }
+type ReportStep = { creator: string, cocreator: string, title: string, itemID: number }
 
 if (!Zotero.Erdos) {
   const monkey_patch_marker = 'ErdosMonkeyPatched'
@@ -28,6 +28,7 @@ if (!Zotero.Erdos) {
     private query: { graph: string, items: string }
     private start: string
     private started = false
+    private report: string
 
     public event = new EventEmitter({ wildcard: true, delimiter: '.', ignoreErrors: false })
 
@@ -134,34 +135,33 @@ if (!Zotero.Erdos) {
         })
         if (typeof id === 'number') {
           // path = (src) - I - C - I - C ....
-          const paths: string[][] = this.pathfinder.paths(`C${id}`).filter(path => path.length > 2)
+          const paths: string[][] = this.pathfinder.paths(`C${id}`)
           if (!paths.length) return
+          debug('paths:', paths)
           const vertices: string[] = [].concat(...paths)
 
           const itemIDs = vertices.filter(v => v[0] === 'I').map(i => i.substr(1)).join(',')
-          const items: Record<string, { title: string, select: string }> = {}
-          for (const { itemID, title, itemKey, libraryID } of (await Zotero.DB.queryAsync(`${this.query.items} WHERE i.itemID IN (${itemIDs})`))) {
-            items[`I${itemID}`] = {
-              title,
-              select: libraryID === Zotero.Libraries.userLibraryID ? `zotero://select/library/items/${itemKey}` : `zotero://select/groups/${libraryID}/items/${itemKey}`,
-            }
+          const items: Record<string, { title: string, itemID: number }> = {}
+          for (const { itemID, title } of (await Zotero.DB.queryAsync(`${this.query.items} WHERE i.itemID IN (${itemIDs})`))) {
+            items[`I${itemID}`] = { title, itemID }
           }
+          debug('items:', items)
 
           const creators: Record<string, string> = vertices.filter(v => v[0] === 'C').reduce((acc, c) => { acc[c] = this.creator(c.substr(1)); return acc }, {})
+          debug('creators:', creators)
 
-          const report: ReportStep[][] = []
-          for (const path of paths) {
-            report.unshift([])
-            for (let i = 0; i < paths.length - 2; i += 2) {
-              report[0].push({
-                creator1: creators[path[i]],
-                ...items[path[i + 1]],
-                creator2: creators[path[i + 2]],
-              })
-            }
-          }
+          const report: ReportStep[][] = paths.map(path => path
+            // get C-I-C
+            .map((_, i) => i % 2 === 0 ? path.slice(i, i+3) : undefined) // eslint-disable-line @typescript-eslint/no-magic-numbers
+            // remove I-C-I and tail
+            .filter(step => step && step.length === 3) // eslint-disable-line @typescript-eslint/no-magic-numbers
+            .map(([cr, item, co]) => ({ creator: creators[cr], ...items[item], cocreator: creators[co] }))
+          )
+          debug('report:', report)
+          this.report = template({ start: this.start, end: this.creator(creator), paths: report })
+          debug('reporting:', this.report)
 
-          Zotero.openInViewer(`chrome://zotero-erdos/content/report.html?paths=${encodeURIComponent(template({ start: this.start, end: this.creator(creator), paths: report }) as string)}`)
+          Zotero.openInViewer('chrome://zotero-erdos/content/report.html')
         }
         else {
           alert(`could not find ${JSON.stringify(creator)}`)

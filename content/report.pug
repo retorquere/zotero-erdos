@@ -1,16 +1,14 @@
-html
-  title path from #{start} to #{end}
-  body
-    script.
-      alert('from template')
-    h2 path from #{start} to #{end}
-    each path in paths
-      table
-        each step in path
-          tr
-            td= step.creator1
-            td co-authored with
-            td= step.creator2
-            td
-              a(href=step.select)= step.title
-
+h2 path from #{start} to #{end}
+each path in paths
+  hr
+  form
+    table
+      each step in path
+        tr
+          td= step.creator
+          td co-authored with
+          td= step.cocreator
+          td
+            span= step.title
+            span /
+            button= step.title

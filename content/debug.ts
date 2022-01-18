@@ -3,15 +3,11 @@ declare const Zotero: any
 
 function to_s(obj: any): string {
   if (typeof obj === 'string') return obj
+  if (Array.isArray(obj)) return JSON.stringify(obj)
+  if (obj instanceof Set) return JSON.stringify(Array.from(obj)) // eslint-disable-line @typescript-eslint/no-unsafe-argument
   const s = `${obj}`
-  switch (s) {
-    case '[object Object]':
-      return JSON.stringify(obj)
-    case '[object Set]':
-      return JSON.stringify(Array.from(obj)) // eslint-disable-line @typescript-eslint/no-unsafe-argument
-    default:
-      return s
-  }
+  if (s ==='[object Object]') return JSON.stringify(obj)
+  return s
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
