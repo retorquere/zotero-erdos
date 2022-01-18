@@ -6,8 +6,8 @@ import { EventEmitter2 as EventEmitter } from 'eventemitter2'
 import { DiGraph, Dijkstra } from './dijkstra'
 const template = require('./report.pug')
 
-type Creator = { fieldMode: number, firstName?: string, lastName: string }
-type ReportStep = { creator: string, cocreator: string, title: string, itemID: number }
+type Creator = { fieldMode: number, firstName?: string, lastName: string, creatorTypeID: number }
+type ReportStep = { creator: string, cocreator: string, title: string, libraryID: number, itemID: number }
 
 if (!Zotero.Erdos) {
   const monkey_patch_marker = 'ErdosMonkeyPatched'
@@ -52,6 +52,10 @@ if (!Zotero.Erdos) {
           debug('start refresh')
           await this.refresh()
           this.started = true
+
+          // debug
+          // await this.setStart({fieldMode: 0, firstName: 'James H.', lastName: 'Schmerl', creatorTypeID: 1})
+          // await this.setEnd({fieldMode: 0, firstName: 'Fred', lastName: 'Galvin', creatorTypeID: 1})
         }
         catch (err) {
           debug('Error:', err.message)
@@ -98,6 +102,7 @@ if (!Zotero.Erdos) {
     }
 
     protected async setStart(creator: Creator) {
+      debug('setStart:', creator)
       if (!this.started) {
         alert('still starting')
         return
@@ -123,6 +128,7 @@ if (!Zotero.Erdos) {
     }
 
     protected async setEnd(creator: Creator) {
+      debug('setEnd:', creator)
       if (!this.started) {
         alert('still starting')
         return
@@ -141,9 +147,14 @@ if (!Zotero.Erdos) {
           const vertices: string[] = [].concat(...paths)
 
           const itemIDs = vertices.filter(v => v[0] === 'I').map(i => i.substr(1)).join(',')
-          const items: Record<string, { title: string, itemID: number }> = {}
-          for (const { itemID, title } of (await Zotero.DB.queryAsync(`${this.query.items} WHERE i.itemID IN (${itemIDs})`))) {
-            items[`I${itemID}`] = { title, itemID }
+          const items: Record<string, { title: string, itemID: number, libraryID: number, select?: string  }> = {}
+          for (const { itemID, title, libraryID } of (await Zotero.DB.queryAsync(`${this.query.items} WHERE i.itemID IN (${itemIDs})`))) {
+            items[`I${itemID}`] = {
+              title,
+              itemID,
+              libraryID,
+              // select: libraryID === Zotero.Libraries.userLibraryID ? `zotero://select/library/items/${itemKey}` : `zotero://select/groups/${libraryID}/items/${itemKey}`,
+            }
           }
           debug('items:', items)
 
