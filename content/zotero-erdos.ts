@@ -28,7 +28,6 @@ if (!Zotero.Erdos) {
     private query: { graph: string, items: string }
     private start: string
     private started = false
-    protected report: string
 
     public event = new EventEmitter({ wildcard: true, delimiter: '.', ignoreErrors: false })
 
@@ -161,10 +160,8 @@ if (!Zotero.Erdos) {
               })
             }
           }
-          this.report = template({ start: this.start, end: this.creator(creator), paths: report })
 
-          debug(this.report)
-          Zotero.openInViewer('chrome://zotero-erdos/content/report.html')
+          Zotero.openInViewer(`chrome://zotero-erdos/content/report.html?paths=${encodeURIComponent(template({ start: this.start, end: this.creator(creator), paths: report }) as string)}`)
         }
         else {
           alert(`could not find ${JSON.stringify(creator)}`)

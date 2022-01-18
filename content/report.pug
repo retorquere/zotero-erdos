@@ -1,6 +1,8 @@
 html
   title path from #{start} to #{end}
   body
+    script.
+      alert('from template')
     h2 path from #{start} to #{end}
     each path in paths
       table

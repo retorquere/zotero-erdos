@@ -3,8 +3,8 @@
     <h1>hello</h>
     <div id="report">
   <body>
-  <script src="chrome://zotero/content/include.js"/>
   <script>
-    document.getElementById('report').innerHTML = Zotero.Erdos.report
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById('report').innerHTML = params.get('paths')
   </script>
 </html>
