@@ -35,7 +35,7 @@ if (!Zotero.Erdos) {
     private observer: MutationObserver
 
     constructor() {
-      this.event.on('start', async ({ document: doc }) => { // eslint-disable-line @typescript-eslint/no-misused-promises
+      this.event.on('start', async ({ document: doc }: { document: Document }) => { // eslint-disable-line @typescript-eslint/no-misused-promises
         try {
           debug('started')
           await Zotero.Schema.schemaUpdatePromise
@@ -53,6 +53,7 @@ if (!Zotero.Erdos) {
           await this.refresh()
           this.started = true
 
+          this.updateMenu(null, doc)
           // debug
           // await this.setStart({fieldMode: 0, firstName: 'James H.', lastName: 'Schmerl', creatorTypeID: 1})
           // await this.setEnd({fieldMode: 0, firstName: 'Fred', lastName: 'Galvin', creatorTypeID: 1})
@@ -67,6 +68,8 @@ if (!Zotero.Erdos) {
         if (this.observer) this.observer.disconnect()
         this.observer = new MutationObserver(this.itemboxmutated.bind(this) as MutationCallback)
         this.observer.observe(doc.getElementById('zotero-editpane-item-box') as Node, { childList: true, subtree: true })
+
+        this.updateMenu(null, doc)
       })
     }
 
@@ -183,7 +186,14 @@ if (!Zotero.Erdos) {
       }
     }
 
-    private updateMenu(creator_type_menu) {
+    private updateMenu(creator_type_menu, doc?: Document) {
+      if (doc) {
+        const epib = doc.getElementById('zotero-editpane-item-box')
+        if (!epib) return
+        creator_type_menu = (doc as unknown as any).getAnonymousElementByAttribute(epib, 'id', 'creator-type-menu')
+        if (!creator_type_menu) return
+      }
+
       if (!creator_type_menu.querySelector('#erdos-start')) {
         creator_type_menu.appendChild(creator_type_menu.ownerDocument.createElement('menuseparator'))
         const menuitem = creator_type_menu.appendChild(creator_type_menu.ownerDocument.createElement('menuitem'))
