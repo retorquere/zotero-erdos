@@ -1,1 +1,1 @@
-SELECT 'I' || itemID AS v, 'C' || creatorID as w FROM itemCreators i
+SELECT DISTINCT 'I' || itemID AS v, 'C' || creatorID as w FROM itemCreators

@@ -183,49 +183,48 @@ if (!Zotero.Erdos) {
       }
     }
 
+    private updateMenu(creator_type_menu) {
+      if (!creator_type_menu.querySelector('#erdos-start')) {
+        creator_type_menu.appendChild(creator_type_menu.ownerDocument.createElement('menuseparator'))
+        const menuitem = creator_type_menu.appendChild(creator_type_menu.ownerDocument.createElement('menuitem'))
+        menuitem.setAttribute('id', 'erdos-start')
+        menuitem.setAttribute('label', 'Start of Erdos trail')
+        menuitem.setAttribute('oncommand', `
+          var typeBox = document.popupNode.localName == 'hbox' ? document.popupNode : document.popupNode.parentNode;
+          var index = parseInt(typeBox.getAttribute('fieldname').split('-')[1]);
+          var item = document.getBindingParent(this).item;
+          var exists = item.hasCreatorAt(index);
+          if (exists) {
+            Zotero.Erdos.setStart(item.getCreator(index));
+            const end = document.getElementById('erdos-end');
+            if (end) end.remove()
+          }
+
+          return false;
+        `)
+      }
+
+      if (this.start && !creator_type_menu.querySelector('#erdos-end')) {
+        const menuitem = creator_type_menu.appendChild(creator_type_menu.ownerDocument.createElement('menuitem'))
+        menuitem.setAttribute('id', 'erdos-end')
+        menuitem.setAttribute('label', `Path to ${this.start}`)
+        menuitem.setAttribute('oncommand', `
+          var typeBox = document.popupNode.localName == 'hbox' ? document.popupNode : document.popupNode.parentNode;
+          var index = parseInt(typeBox.getAttribute('fieldname').split('-')[1]);
+          var item = document.getBindingParent(this).item;
+          var exists = item.hasCreatorAt(index);
+          if (exists) Zotero.Erdos.setEnd(item.getCreator(index));
+          return false;
+        `)
+      }
+    }
+
     protected itemboxmutated(mutations: MutationRecord[], _observer: MutationObserver): void {
       if (!this.started) return
 
-      let id: string
       for (const mutation of mutations) {
         const node = mutation.target as Element
-        if (mutation.type === 'childList' && (id = node.getAttribute('id'))) {
-          if (id === 'creator-type-menu') {
-            if (this.graph && !node.querySelector('#erdos-start')) {
-              node.appendChild(node.ownerDocument.createElement('menuseparator'))
-              const menuitem = node.appendChild(node.ownerDocument.createElement('menuitem'))
-              menuitem.setAttribute('id', 'erdos-start')
-              menuitem.setAttribute('label', 'Start of Erdos trail')
-              menuitem.setAttribute('oncommand', `
-                var typeBox = document.popupNode.localName == 'hbox' ? document.popupNode : document.popupNode.parentNode;
-                var index = parseInt(typeBox.getAttribute('fieldname').split('-')[1]);
-                var item = document.getBindingParent(this).item;
-                var exists = item.hasCreatorAt(index);
-                if (exists) {
-                  Zotero.Erdos.setStart(item.getCreator(index));
-                  const end = document.getElementById('erdos-end');
-                  if (end) end.remove()
-                }
-
-                return false;
-              `)
-            }
-
-            if (this.start && !node.querySelector('#erdos-end')) {
-              const menuitem = node.appendChild(node.ownerDocument.createElement('menuitem'))
-              menuitem.setAttribute('id', 'erdos-end')
-              menuitem.setAttribute('label', `Path to ${this.start}`)
-              menuitem.setAttribute('oncommand', `
-                var typeBox = document.popupNode.localName == 'hbox' ? document.popupNode : document.popupNode.parentNode;
-                var index = parseInt(typeBox.getAttribute('fieldname').split('-')[1]);
-                var item = document.getBindingParent(this).item;
-                var exists = item.hasCreatorAt(index);
-                if (exists) Zotero.Erdos.setEnd(item.getCreator(index));
-                return false;
-              `)
-            }
-          }
-        }
+        if (mutation.type === 'childList' && node.getAttribute('id') === 'creator-type-menu') this.updateMenu(node)
       }
     }
   }
