@@ -7,13 +7,9 @@
     <stringbundle id="zotero-erdos-strings" src="chrome://zotero-erdos/locale/zotero-erdos.properties"/>
   </stringbundleset>
 
-  <menupopup id="zotero-itemmenu">
-    <menu id="zotero-itemmenu-erdos" label="Erdos" class="menu-iconic" image="chrome://zotero-better-bibtex/skin/bibtex-menu.svg">
-      <menupopup id="zotero-itemmenu-erdos-submenu">
-        <menuitem label="start" oncommand="alert('start');"/>
-      </menupopup>
-    </menu>
-  </menupopup>
+  <menupopup id="menu_ToolsPopup">
+	  <menuitem insertafter="menu_preferences" label="Erdos path" oncommand="Zotero.openInViewer('chrome://zotero-erdos/content/dijkstra/index.xul')"/>
+	</menupopup>
 
 	<!-- Include the main extension logic -->
   <script src="chrome://zotero/content/include.js"/>

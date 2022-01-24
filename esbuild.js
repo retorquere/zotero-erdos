@@ -29,6 +29,11 @@ async function build() {
     entryPoints: [ 'content/zotero-erdos.ts' ],
     outdir: 'build/content',
   })
+  await esbuild.build({
+    target: ['firefox60'],
+    entryPoints: [ 'content/dijkstra/index.ts' ],
+    outdir: 'build/content/dijkstra',
+  })
 }
 
 build().catch(err => {
