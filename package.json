@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "eslint . --ext .ts --cache --cache-location .eslintcache/",
     "prebuild": "npm run lint",
-    "build": "tsc --noEmit && node esbuild.js",
+    "build": "rm -rf build && tsc --noEmit && node esbuild.js",
     "postbuild": "zotero-plugin-zipup build zotero-erdos",
     "release": "zotero-plugin-release",
     "postversion": "git push --follow-tags",
