@@ -24,9 +24,9 @@
  *****************************************************************************/
 
 import nanoq = require('nanoq')
+import type UndirectedGraph from 'graphology'
 
 // vertex points to neighbour points to cost
-export type DiGraph = Record<string, Record<string, number>>
 
 export class Dijkstra {
   // Predecessor map for each vertex that has been encountered.
@@ -36,7 +36,9 @@ export class Dijkstra {
   // vertex ID => cost
   private costs: Record<string, number> = {}
 
-  constructor(graph: DiGraph, src: string) {
+  constructor(graph: UndirectedGraph, src: string) {
+    const cost_of_e = 1
+
     this.costs[src] = 0
 
     // Costs of shortest paths from s to all vertices encountered; differs from
@@ -54,7 +56,8 @@ export class Dijkstra {
       // Get vertices adjacent to u and explore the edges that connect u to those vertices, updating
       // the cost of the shortest paths to any or all of those vertices as
       // necessary. v is the vertice across the current edge from u.
-      for (const [v, cost_of_e] of Object.entries(graph[u] || {})) {
+
+      graph.forEachNeighbor(u, (v, _attributes) => {
         // Cost of s to u plus the cost of u to v across e--this is *a*
         // cost from s to v that may or may not be less than the current
         // known cost to v.
@@ -64,17 +67,15 @@ export class Dijkstra {
         // v is greater than the new cost we just found (cost of s to u plus
         // cost of u to v across e), update v's cost in the cost list and
         // update v's predecessor in the predecessor list (it's now u).
-        const cost_of_s_to_v = this.costs[v]
-        const first_visit = (typeof this.costs[v] === 'undefined')
-        if (first_visit || cost_of_s_to_v > cost_of_s_to_u_plus_cost_of_e) {
+        if (typeof this.costs[v] === 'undefined' || this.costs[v] > cost_of_s_to_u_plus_cost_of_e) {
           this.costs[v] = cost_of_s_to_u_plus_cost_of_e
           open.push(v, cost_of_s_to_u_plus_cost_of_e)
           this.predecessors[v] = [u]
         }
-        else if (cost_of_s_to_v === cost_of_s_to_u_plus_cost_of_e) {
+        else if (this.costs[v] === cost_of_s_to_u_plus_cost_of_e) {
           this.predecessors[v].push(u)
         }
-      }
+      })
     }
   }
 

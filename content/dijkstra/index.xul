@@ -20,6 +20,8 @@
     </hbox>
     <hbox>
       <button id="search" label="Search" oncommand="search()"/>
+      <checkbox id="lastname-search" label="Search on lastname" oncommand="toggleSearchMode()"></checkbox>
+      <button id="save" label="Save" oncommand="save()"/>
       <label flex="1"/>
     </hbox>
     <label id="notreachable" hidden="true" value="Not reachable"/>

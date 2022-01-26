@@ -2,13 +2,51 @@
 declare const Components: any
 Components.utils.import('resource://gre/modules/Services.jsm')
 
-import type { ReportStep, Erdos } from '../zotero-erdos'
-
 declare const Zotero: {
   Erdos: Erdos
   getActiveZoteroPane: () => any
   debug: (msg: string) => void
   Utilities: any
+  Prefs: any
+  File: any
+  Promise: any
+}
+
+import type { ReportStep, Erdos } from '../zotero-erdos'
+
+// eslint-disable-next-line @typescript-eslint/require-await
+async function pick(title: string, mode: 'open' | 'save' | 'folder', filters?: [string, string][], suggestion?: string): Promise<string> {
+  const fp = Components.classes['@mozilla.org/filepicker;1'].createInstance(Components.interfaces.nsIFilePicker)
+
+  if (suggestion) fp.defaultString = suggestion
+
+  mode = {
+    open: Components.interfaces.nsIFilePicker.modeOpen,
+    save: Components.interfaces.nsIFilePicker.modeSave,
+    folder: Components.interfaces.nsIFilePicker.modeGetFolder,
+  }[mode]
+
+  fp.init(window, title, mode)
+
+  for (const [label, ext] of (filters || [])) {
+    fp.appendFilter(label, ext)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  return new Zotero.Promise(resolve => {
+    fp.open(userChoice => {
+      switch (userChoice) {
+        case Components.interfaces.nsIFilePicker.returnOK:
+        case Components.interfaces.nsIFilePicker.returnReplace:
+          resolve(fp.file.path)
+          break
+
+        default: // aka returnCancel
+          resolve('')
+          break
+      }
+    })
+  })
 }
 
 function debug(msg) {
@@ -17,14 +55,6 @@ function debug(msg) {
 
 function input(id: string): HTMLInputElement {
   return document.getElementById(id) as HTMLInputElement
-}
-
-function reset() {
-  input('creator').value = ''
-  input('creator_status').value = ''
-  input('cocreator').value = ''
-  input('cocreator_status').value = ''
-  input('search').disabled = true
 }
 
 class TreeView {
@@ -90,19 +120,21 @@ function verify() {
     cocreator: { id: '', ok: false },
   }
   for (const id of ['creator', 'cocreator']) {
-    status[id].id = Zotero.Erdos.started && Zotero.Erdos.creators.byName[input(id).value]
+    const name = input(id).value
+    status[id].id = Zotero.Erdos.started && Zotero.Erdos.graph.findNode((node, attr) => node[0] === 'C' && attr.name === name)
     status[id].ok = status[id].id && (id === 'creator' || status.creator.id !== status.cocreator.id)
     input(`${id}_status`).value = status[id].ok ? '\u2705' : '\u274C'
   }
   input('search').disabled = !status.creator.ok || !status.cocreator.ok
+  input('save').disabled = !Zotero.Erdos.graph
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function search() {
+function search() {
   const creator: string = input('creator').value
   const cocreator: string = input('cocreator').value
 
-  const paths = await Zotero.Erdos.search(cocreator, creator)
+  const paths: ReportStep[][] = Zotero.Erdos.search(cocreator, creator)
   document.getElementById('notreachable').hidden = !!paths
 
   if (paths) (document.getElementById('paths') as unknown as any).view = new TreeView(paths)
@@ -122,8 +154,20 @@ function select(index) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function toggleSearchMode() {
+  Zotero.Prefs.set('erdos.lastname-search', !!input('lastname-search').checked)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function save() {
+  const filename = await pick('Save as GML', 'save', [['GML', '.gml']])
+  if (filename) Zotero.File.putContentsAsync(filename, Zotero.Erdos.gml())
+}
+
 window.addEventListener('load', () => {
+  input('lastname-search').checked = !!Zotero.Prefs.get('erdos.lastname-search')
   debug('pane loaded')
-  reset()
-  Zotero.Erdos.event.on('graph.refresh', reset)
+  verify()
+  Zotero.Erdos.event.on('graph.refresh', verify)
 })
