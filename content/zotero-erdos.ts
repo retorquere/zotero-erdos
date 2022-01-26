@@ -131,7 +131,7 @@ export class Erdos { // tslint:disable-line:variable-name
       const pathfinder = new Dijkstra(this.graph, creator_id)
       if (!pathfinder.reachable(cocreator_id)) return null
 
-      const paths = pathfinder.paths(cocreator_id)
+      const paths: string[][] = pathfinder.paths(cocreator_id)
       debug('paths:', paths)
       if (!paths.length) return null
 
