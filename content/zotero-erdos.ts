@@ -121,8 +121,8 @@ export class Erdos { // tslint:disable-line:variable-name
 
   public search(creator: string, cocreator: string): ReportStep[][] {
     try {
-      let creator_id = this.graph.findNode((id, attr) => id[0] === 'C' && attr.name === creator)
-      let cocreator_id = this.graph.findNode((id, attr) => id[0] === 'C' && attr.name === cocreator)
+      let creator_id: string = this.graph.findNode((id, attr) => id[0] === 'C' && attr.name === creator)
+      let cocreator_id: string = this.graph.findNode((id, attr) => id[0] === 'C' && attr.name === cocreator)
       if (Zotero.Prefs.get('erdos.lastname-search')) {
         creator_id = this.graph.getNodeAttribute(creator_id, 'lastname') || creator_id
         cocreator_id = this.graph.getNodeAttribute(cocreator_id, 'lastname') || cocreator_id
