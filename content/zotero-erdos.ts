@@ -61,10 +61,14 @@ export class Erdos { // tslint:disable-line:variable-name
   }
 
   public gml(): string {
+    function label(s) { // eslint-disable-line prefer-arrow/prefer-arrow-functions
+      s = s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/[^\x20-\x7E]/g, c => `&#${c.charCodeAt()};`)
+      return `"${s}"`
+    }
     let gml = 'graph [\n'
 
     this.graph.forEachNode((node, attr) => {
-      gml += `  node [\n    id ${attr.id}\n    label ${JSON.stringify(attr.name || attr.title || node)}\n  ]\n`
+      gml += `  node [\n    id ${attr.id}\n    label ${label(attr.name || attr.title || node)}\n  ]\n`
     })
 
     this.graph.forEachEdge((edge, attributes, source, target, sourceAttributes, targetAttributes) => {
