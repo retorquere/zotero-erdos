@@ -118,7 +118,7 @@ export class Erdos { // tslint:disable-line:variable-name
   creatorName(creator: string, item: string): string {
     switch (creator[0]) {
       case 'C': return this.graph.getNodeAttribute(creator, 'name') as string
-      case 'L': return this.graph.getUndirectedEdgeAttribute(this.edgeKey(creator, item), 'name') as string
+      case 'L': return this.graph.getUndirectedEdgeAttribute(creator, item, 'name') as string
       default: throw new Error(`Unexpected creator node ${JSON.stringify(creator)}`)
     }
   }
