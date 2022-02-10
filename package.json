@@ -1,6 +1,6 @@
 {
   "name": "zotero-erdos",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Determine shortest path between given authors.",
   "scripts": {
     "lint": "eslint . --ext .ts --cache --cache-location .eslintcache/",
