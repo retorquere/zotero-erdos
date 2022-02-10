@@ -12,7 +12,6 @@
 	</menupopup>
 
 	<!-- Include the main extension logic -->
-  <script src="chrome://zotero/content/include.js"/>
   <script src="chrome://zotero-erdos/content/zotero-erdos.js"/>
   <script>
     Zotero.Erdos.event.emit('start', { document })
